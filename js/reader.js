@@ -8,6 +8,15 @@ const CAST = {
 const lines = [...document.querySelectorAll("article p[data-voice]")];
 const player = document.querySelector(".player");
 const portrait = player.querySelector("img");
+const face = document.createElement("div");
+face.className = "face";
+const playerVideo = document.createElement("video");
+playerVideo.muted = true;
+playerVideo.loop = true;
+playerVideo.playsInline = true;
+playerVideo.setAttribute("playsinline", "");
+portrait.replaceWith(face);
+face.append(portrait, playerVideo);
 const whoNow = player.querySelector(".who-now");
 const statusEl = player.querySelector(".status");
 const bar = player.querySelector(".track span");
@@ -37,9 +46,20 @@ function spokenText(node) {
 
 const stage = document.createElement("aside");
 stage.className = "stage";
-stage.innerHTML = "<div class=\"stage-frame\"><img alt=\"\"><video muted loop playsinline></video></div><p></p>";
+stage.innerHTML = "<div class=\"stage-frame\"><img alt=\"\"><video muted loop playsinline preload=\"auto\"></video></div><p></p>";
 const stageImg = stage.querySelector("img");
 const stageVideo = stage.querySelector("video");
+stageVideo.muted = true;
+const talking = [stageVideo, playerVideo];
+
+function startTalking(video) {
+  video.muted = true;
+  const go = () => {
+    if (document.body.classList.contains("is-reading")) video.play().catch(() => {});
+  };
+  if (video.readyState >= 2) go();
+  else video.addEventListener("canplay", go, { once: true });
+}
 const stageName = stage.querySelector("p");
 const layout = document.querySelector(".layout");
 if (layout) layout.prepend(stage);
@@ -52,11 +72,13 @@ function setSpeaker(id) {
   stageImg.src = `images/${id}.jpg`;
   stageImg.alt = person.name;
   stageName.textContent = person.name;
-  const clip = `videos/${id}.mp4`;
-  if (stageVideo.getAttribute("src") !== clip) {
-    stageVideo.src = clip;
-    if (document.body.classList.contains("is-reading")) stageVideo.play().catch(() => {});
-  }
+  const clip = `videos/${id}.mp4?v=2`;
+  talking.forEach((video) => {
+    if (video.dataset.clip === clip) return;
+    video.dataset.clip = clip;
+    video.src = clip;
+    if (document.body.classList.contains("is-reading")) startTalking(video);
+  });
 }
 
 function focusLine(line) {
@@ -70,11 +92,13 @@ let followScroll = true;
 function setReading(on) {
   document.body.classList.toggle("is-reading", on);
   followScroll = !on;
-  if (on) stageVideo.play().catch(() => {});
-  else {
-    stageVideo.pause();
-    try { stageVideo.currentTime = 0; } catch (_) { /* not ready yet */ }
-  }
+  talking.forEach((video) => {
+    if (on) startTalking(video);
+    else {
+      video.pause();
+      try { video.currentTime = 0; } catch (_) { /* not ready yet */ }
+    }
+  });
 }
 
 if (layout && lines.length) {
@@ -239,6 +263,7 @@ playBtn.addEventListener("click", () => {
   if (!audio.paused && !audio.ended && audio.src) {
     audio.pause();
     paused = true;
+    talking.forEach((video) => video.pause());
     playBtn.textContent = "Play";
     setStatus("Paused");
     return;
@@ -246,6 +271,7 @@ playBtn.addEventListener("click", () => {
   if (paused && audio.src) {
     paused = false;
     audio.play();
+    talking.forEach((video) => startTalking(video));
     playBtn.textContent = "Pause";
     setStatus(`Paragraph ${activeIndex + 1} of ${lines.length}`);
     return;
