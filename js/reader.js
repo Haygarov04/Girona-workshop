@@ -25,6 +25,7 @@ const stopBtn = player.querySelector("[data-action='stop']");
 const slowBtn = player.querySelector("[data-action='slow']");
 
 const audio = new Audio();
+let endVoice = () => {};
 let token = 0;
 let urls = [];
 let slow = false;
@@ -186,6 +187,7 @@ function playUrl(url, run) {
 }
 
 async function speakParagraphs(startAt) {
+  endVoice();
   if (!lines.length) return;
   const run = ++token;
   paused = false;
@@ -237,6 +239,7 @@ async function speakParagraphs(startAt) {
 }
 
 async function speakOnce(text, id) {
+  endVoice();
   halt();
   const run = token;
   setSpeaker(id);
@@ -321,12 +324,54 @@ document.querySelectorAll("[data-line]").forEach((button) => {
 setSpeaker(document.body.dataset.narrator || "lina");
 setStatus(lines.length ? "Press Play to hear this part in English." : "Ready");
 
-const LINES = {
-  lina: "I measure orchards that behave like orchards. This one did not. I came home for my brother, not for a story.",
-  bram: "I know the sound a false room makes. These boards were real. So was the gate I locked.",
-  sera: "Say what a thing is, and it may consent to stay. Tonight the orchard taught me when to stop naming and start planting.",
-  edwin: "I held the door because I did not like the terms. If I let go, the trees would keep the promise and forget who made it.",
-};
+const VOICE_CANON = `You are in a live voice conversation about a finished story, The Orchard of Unspent Hours, set in Low Merrow.
+An unspent hour is a decision someone did not finish. In this orchard it grows into a room. Burning or cutting a room seals the hour and makes the person forget. Finishing the act turns the room back into a tree.
+Lina Voss, an orchard surveyor, came home after eleven nights because her brother Edwin took their dead mother's pear slips into the west orchard. Bram, the groundskeeper, locked the gate. Sera Quill, the night librarian, says a promise planted in the wrong room becomes the room. In the Room of Tides the slips were under a table set for Mother, Edwin, and Lina. In the Closing Gallery Edwin had held the last door for eleven nights. They planted six slips. The gallery went dark. One young tree kept a seam. Lina left an empty vial. Sera wrote: Finished, not lost. Edwin went home to the bakery.
+Speak only as yourself, in first person, in clear spoken English. Never use another language, not even one word. If the visitor speaks another language, understand it and answer only in English. Stay inside this canon. Two to four short sentences. No lists, no stage directions.`;
+
+function downsample(input, inRate, outRate) {
+  if (inRate === outRate) return input;
+  const ratio = inRate / outRate;
+  const length = Math.floor(input.length / ratio);
+  const out = new Float32Array(length);
+  for (let i = 0; i < length; i += 1) {
+    const start = Math.floor(i * ratio);
+    const end = Math.min(input.length, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    let count = 0;
+    for (let j = start; j < end; j += 1) {
+      sum += input[j];
+      count += 1;
+    }
+    out[i] = count ? sum / count : 0;
+  }
+  return out;
+}
+
+function pcm16Base64(samples) {
+  const bytes = new Uint8Array(samples.length * 2);
+  const view = new DataView(bytes.buffer);
+  for (let i = 0; i < samples.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+  }
+  let binary = "";
+  const step = 0x8000;
+  for (let i = 0; i < bytes.length; i += step) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + step));
+  }
+  return btoa(binary);
+}
+
+function base64ToPcm(payload) {
+  const binary = atob(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  const view = new DataView(bytes.buffer);
+  const samples = new Float32Array(Math.floor(bytes.length / 2));
+  for (let i = 0; i < samples.length; i += 1) samples[i] = view.getInt16(i * 2, true) / 32768;
+  return samples;
+}
 
 function mountTalk() {
   const bar = document.querySelector(".top");
@@ -336,16 +381,20 @@ function mountTalk() {
   dialog.innerHTML = `
     <div class="talk-head">
       <div>
-        <p class="kicker">Who is here</p>
+        <p class="kicker">Voice</p>
         <h2>Talk with them</h2>
       </div>
       <button type="button" data-close>Close</button>
     </div>
-    <p class="note">Choose a person. They answer in English, then say it aloud.</p>
+    <p class="note">Choose a person and speak. They answer in their own voice, in English. You can interrupt them.</p>
     <div class="talk-people"></div>
+    <div class="call-row">
+      <button type="button" class="solid" data-call>Start voice</button>
+      <p class="call-status" aria-live="polite"></p>
+    </div>
     <div class="log" aria-live="polite"></div>
     <form class="ask-form">
-      <label class="note" for="question">Your question</label>
+      <label class="note" for="question">Or type</label>
       <input id="question" name="question" maxlength="600" placeholder="Ask in English" autocomplete="off">
       <button class="solid" type="submit">Ask</button>
     </form>
@@ -373,6 +422,11 @@ function mountTalk() {
   const form = dialog.querySelector("form");
   const input = form.querySelector("input");
   const choices = [...dialog.querySelectorAll("[data-character]")];
+  const callBtn = dialog.querySelector("[data-call]");
+  const callStatus = dialog.querySelector(".call-status");
+
+  let generation = 0;
+  let live = null;
 
   function render() {
     log.replaceChildren();
@@ -380,7 +434,9 @@ function mountTalk() {
     if (!thread.length) {
       const empty = document.createElement("p");
       empty.className = "note";
-      empty.textContent = `Ask ${CAST[current].name} about the orchard, a choice they made, or a sentence you want to hear.`;
+      empty.textContent = live
+        ? `${CAST[current].name} can hear you. Speak in English.`
+        : `Start the voice line, then speak with ${CAST[current].name}.`;
       log.append(empty);
       return;
     }
@@ -392,23 +448,284 @@ function mountTalk() {
       bubble.append(label, document.createTextNode(entry.content));
       log.append(bubble);
     });
+    log.scrollTop = log.scrollHeight;
   }
 
-  function select(id, speak) {
+  function putLine(role, id, text) {
+    const thread = threads[current];
+    const found = thread.find((entry) => entry.id === id);
+    if (found) found.content = text;
+    else thread.push({ role, id, content: text });
+    render();
+  }
+
+  function paintCall() {
+    const person = CAST[current];
+    callBtn.textContent = live ? "Hang up" : `Speak with ${person.name.split(" ")[0]}`;
+    callBtn.classList.toggle("live", Boolean(live));
+    callBtn.setAttribute("aria-pressed", live ? "true" : "false");
+  }
+
+  function select(id) {
+    const same = id === current;
     current = id;
     choices.forEach((choice) => choice.setAttribute("aria-pressed", choice.dataset.character === id ? "true" : "false"));
     setSpeaker(id);
+    paintCall();
     render();
-    if (speak) speakOnce(LINES[id], id);
+    if (live && !same) startCall(id);
   }
+
+  function stopLive(run) {
+    const session = live;
+    if (!session || (run && session.run !== run)) return;
+    live = null;
+    session.sendMic = false;
+    session.sources.forEach((source) => {
+      try { source.stop(); } catch (_) { /* already ended */ }
+    });
+    try { session.processor.disconnect(); } catch (_) { /* not started */ }
+    try { session.micSource.disconnect(); } catch (_) { /* not started */ }
+    session.stream?.getTracks().forEach((track) => track.stop());
+    try { session.socket.close(); } catch (_) { /* already closed */ }
+    session.context?.close().catch(() => {});
+    setReading(false);
+    paintCall();
+  }
+
+  function enqueue(session, samples) {
+    if (!samples.length || session.run !== generation) return;
+    const buffer = session.context.createBuffer(1, samples.length, 24000);
+    buffer.getChannelData(0).set(samples);
+    const source = session.context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(session.context.destination);
+    const now = session.context.currentTime;
+    if (session.playAt < now) session.playAt = now;
+    source.start(session.playAt);
+    session.playAt += buffer.duration;
+    session.sources.push(source);
+    setSpeaker(session.character);
+    setReading(true);
+    source.onended = () => {
+      if (session.run === generation && session.context.currentTime >= session.playAt - 0.08) setReading(false);
+    };
+  }
+
+  function flushAudio(session) {
+    session.sources.forEach((source) => {
+      try { source.stop(); } catch (_) { /* already ended */ }
+    });
+    session.sources = [];
+    session.playAt = 0;
+    setReading(false);
+  }
+
+  function onVoiceEvent(session, event) {
+    if (session.run !== generation) return;
+    const type = event.type;
+    if (type === "error") {
+      callStatus.textContent = event.error?.message || "The voice line failed.";
+      return;
+    }
+    if (type === "session.updated" && !session.greeted) {
+      session.greeted = true;
+      session.socket.send(JSON.stringify({
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "I just sat down with you. Greet me in one short English sentence and invite one question about the orchard." }],
+        },
+      }));
+      session.socket.send(JSON.stringify({ type: "response.create" }));
+      callStatus.textContent = `${CAST[session.character].name} is on the line.`;
+      return;
+    }
+    if (type === "input_audio_buffer.speech_started") {
+      flushAudio(session);
+      callStatus.textContent = "Listening.";
+      return;
+    }
+    if (type === "response.created") {
+      session.answerId = event.response?.id || `answer-${Date.now()}`;
+      session.answer = "";
+      callStatus.textContent = `${CAST[session.character].name} is speaking.`;
+      return;
+    }
+    if (type === "response.output_audio.delta" || type === "response.audio.delta") {
+      if (event.delta) enqueue(session, base64ToPcm(event.delta));
+      return;
+    }
+    if (type === "response.output_audio_transcript.delta" || type === "response.audio_transcript.delta") {
+      session.answer += event.delta || "";
+      putLine("assistant", session.answerId, session.answer);
+      return;
+    }
+    if (type === "response.output_audio_transcript.done" || type === "response.audio_transcript.done") {
+      const text = event.transcript || session.answer;
+      if (text) putLine("assistant", session.answerId, text);
+      return;
+    }
+    if (type === "response.done") {
+      if (session.sendMic) return;
+      const arm = () => {
+        if (session.run !== generation) return;
+        if (session.context.currentTime + 0.15 < session.playAt) {
+          setTimeout(arm, 120);
+          return;
+        }
+        session.sendMic = true;
+        callStatus.textContent = "Listening. Speak in English.";
+      };
+      arm();
+      return;
+    }
+    if (type === "conversation.item.input_audio_transcription.updated" || type === "conversation.item.input_audio_transcription.completed") {
+      const text = event.transcript || event.text || "";
+      if (!text) return;
+      putLine("user", event.item_id || "you-latest", text);
+    }
+  }
+
+  async function startCall(id) {
+    const run = ++generation;
+    stopLive();
+    generation = run;
+    halt();
+    current = id;
+    choices.forEach((choice) => choice.setAttribute("aria-pressed", choice.dataset.character === id ? "true" : "false"));
+    setSpeaker(id);
+    callBtn.disabled = true;
+    callStatus.textContent = `Opening a line to ${CAST[id].name}…`;
+    paintCall();
+    try {
+      const context = new AudioContext();
+      await context.resume();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
+      });
+      if (run !== generation) {
+        stream.getTracks().forEach((track) => track.stop());
+        context.close();
+        return;
+      }
+      const tokenResponse = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ character: id }),
+      });
+      const tokenPayload = await tokenResponse.json();
+      if (!tokenResponse.ok) throw new Error(tokenPayload.error || "The voice line did not open.");
+      if (run !== generation) {
+        stream.getTracks().forEach((track) => track.stop());
+        context.close();
+        return;
+      }
+      const socket = new WebSocket("wss://api.x.ai/v1/realtime?model=grok-voice-latest", [`xai-client-secret.${tokenPayload.token}`]);
+      const session = {
+        run,
+        character: id,
+        socket,
+        context,
+        stream,
+        processor: null,
+        micSource: null,
+        sources: [],
+        playAt: 0,
+        sendMic: false,
+        greeted: false,
+        answerId: "",
+        answer: "",
+      };
+      live = session;
+      paintCall();
+      const micSource = context.createMediaStreamSource(stream);
+      const processor = context.createScriptProcessor(4096, 1, 1);
+      const sink = context.createGain();
+      sink.gain.value = 0;
+      micSource.connect(processor);
+      processor.connect(sink);
+      sink.connect(context.destination);
+      session.micSource = micSource;
+      session.processor = processor;
+      processor.onaudioprocess = (event) => {
+        if (!session.sendMic || socket.readyState !== WebSocket.OPEN) return;
+        const down = downsample(event.inputBuffer.getChannelData(0), context.sampleRate, 24000);
+        if (!down.length) return;
+        socket.send(JSON.stringify({ type: "input_audio_buffer.append", audio: pcm16Base64(down) }));
+      };
+      socket.addEventListener("open", () => {
+        if (session.run !== generation) return;
+        const person = CAST[id];
+        socket.send(JSON.stringify({
+          type: "session.update",
+          session: {
+            voice: person.voice,
+            instructions: `You are ${person.name}, ${person.role}. ${VOICE_CANON}`,
+            reasoning: { effort: "none" },
+            turn_detection: { type: "server_vad" },
+            audio: {
+              input: {
+                format: { type: "audio/pcm", rate: 24000 },
+                transcription: {
+                  model: "grok-transcribe",
+                  language_hint: "en",
+                  keyterms: ["Lina", "Bram", "Sera", "Edwin", "Low Merrow", "orchard"],
+                },
+              },
+              output: {
+                format: { type: "audio/pcm", rate: 24000 },
+                speed: slow ? 0.84 : 1,
+              },
+            },
+          },
+        }));
+      });
+      socket.addEventListener("message", (message) => {
+        if (typeof message.data !== "string") return;
+        try {
+          onVoiceEvent(session, JSON.parse(message.data));
+        } catch (_) {
+          /* ignore a bad frame */
+        }
+      });
+      socket.addEventListener("error", () => {
+        if (session.run !== generation) return;
+        callStatus.textContent = "The voice line dropped.";
+      });
+      socket.addEventListener("close", () => {
+        if (session.run !== generation) return;
+        stopLive(session.run);
+        callStatus.textContent = "Hung up.";
+      });
+    } catch (error) {
+      if (run !== generation) return;
+      stopLive(run);
+      const denied = error && error.name === "NotAllowedError";
+      callStatus.textContent = denied
+        ? "The microphone is blocked. Allow it, or type a question."
+        : error.message;
+    } finally {
+      callBtn.disabled = false;
+      paintCall();
+    }
+  }
+
+  endVoice = () => {
+    if (!live) return;
+    generation += 1;
+    stopLive();
+    callStatus.textContent = "Hung up.";
+  };
 
   function show() {
     if (!dialog.open) dialog.showModal();
-    input.focus();
   }
 
   open.addEventListener("click", show);
   dialog.querySelector("[data-close]").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("close", () => endVoice());
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) dialog.close();
   });
@@ -419,15 +736,29 @@ function mountTalk() {
     });
   });
   choices.forEach((choice) => {
-    choice.addEventListener("click", () => select(choice.dataset.character, true));
+    choice.addEventListener("click", () => select(choice.dataset.character));
+  });
+  callBtn.addEventListener("click", () => {
+    if (live) endVoice();
+    else startCall(current);
   });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const question = input.value.trim();
     if (!question) return;
-    const history = threads[current].slice(-8);
-    threads[current].push({ role: "user", content: question });
     input.value = "";
+    if (live && live.socket.readyState === WebSocket.OPEN) {
+      putLine("user", `typed-${Date.now()}`, question);
+      live.socket.send(JSON.stringify({
+        type: "conversation.item.create",
+        item: { type: "message", role: "user", content: [{ type: "input_text", text: question }] },
+      }));
+      live.socket.send(JSON.stringify({ type: "response.create" }));
+      callStatus.textContent = `${CAST[current].name} is speaking.`;
+      return;
+    }
+    const history = threads[current].slice(-8);
+    threads[current].push({ role: "user", id: `typed-${Date.now()}`, content: question });
     render();
     form.querySelector("button").disabled = true;
     setStatus(`${CAST[current].name} is thinking`);
@@ -439,11 +770,11 @@ function mountTalk() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "No answer came back.");
-      threads[current].push({ role: "assistant", content: payload.answer });
+      threads[current].push({ role: "assistant", id: `typed-answer-${Date.now()}`, content: payload.answer });
       render();
       await speakOnce(payload.answer, current);
     } catch (error) {
-      threads[current].push({ role: "assistant", content: error.message });
+      threads[current].push({ role: "assistant", id: `typed-error-${Date.now()}`, content: error.message });
       render();
       setStatus(error.message);
     } finally {
@@ -451,7 +782,7 @@ function mountTalk() {
     }
   });
 
-  select(current, false);
+  select(current);
 }
 
 mountTalk();

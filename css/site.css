@@ -282,7 +282,10 @@ dialog.talk::backdrop { background: rgba(18, 16, 14, 0.62); }
 .talk-people img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 0.75rem; }
 .talk-people strong { font-family: var(--serif); font-size: 0.95rem; }
 .talk-people button[aria-pressed="true"] { background: rgba(227, 154, 69, 0.16); border-color: rgba(154, 93, 34, 0.35); }
-dialog.talk .log { max-height: 240px; overflow: auto; }
+.call-row { display: flex; align-items: center; gap: 0.75rem; margin: 0.2rem 0 0.7rem; }
+.call-status { margin: 0; font-family: var(--sans); font-size: 0.86rem; color: var(--muted); }
+.call-row .solid.live { background: #8c3a2a; color: var(--paper); }
+dialog.talk .log { max-height: 220px; overflow: auto; display: flex; flex-direction: column; gap: 0.45rem; }
 .pager {
   width: min(760px, calc(100% - 8vw));
   margin: 1.2rem auto 0;
