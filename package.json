@@ -2,6 +2,6 @@
   "name": "orchard-of-unspent-hours",
   "private": true,
   "engines": {
-    "node": "20.x"
+    "node": "26.x"
   }
 }
