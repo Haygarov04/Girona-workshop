@@ -29,6 +29,7 @@ PAGES = [
         "title": "The door in the west row",
         "dek": "Lina comes home to Low Merrow and finds the pear trees growing rooms.",
         "hero": "images/orchard.jpg",
+        "video": "videos/orchard.mp4",
         "alt": "A foggy pear orchard at dusk, with wooden doors set into the trunks and warm light spilling from one open door.",
         "prev": None,
         "next": ("middle.html", "Next", "The Room of Tides"),
@@ -46,6 +47,7 @@ PAGES = [
         "title": "The room that borrowed the sea",
         "dek": "Bram tells what the parlor showed them, and what he did to the gate.",
         "hero": "images/tides.jpg",
+        "video": "videos/tides.mp4",
         "alt": "A parlor grown inside a hollow tree, with a table set for three and a window open onto a moonlit sea.",
         "prev": ("index.html", "Previous", "The door in the west row"),
         "next": ("ending.html", "Next", "The last door"),
@@ -59,6 +61,7 @@ PAGES = [
         "title": "Finished, not lost",
         "dek": "Sera tells how the hour was planted, and how one young tree kept a seam.",
         "hero": "images/gallery.jpg",
+        "video": "videos/gallery.mp4",
         "alt": "A long glass corridor lined with closed wooden doors, pear branches against the panes, and one open door shining gold.",
         "prev": ("middle.html", "Previous", "The Room of Tides"),
         "next": ("#ask", "After the story", "Ask them a question"),
@@ -184,6 +187,17 @@ ASK = """
 """
 
 
+def hero_media(spec):
+    image = f'<img src="{spec["hero"]}" alt="{html.escape(spec["alt"])}">'
+    video = spec.get("video")
+    if not video:
+        return image
+    return f"""{image}
+    <video autoplay muted loop playsinline poster="{spec["hero"]}">
+      <source src="{video}" type="video/mp4">
+    </video>"""
+
+
 def model_panel(spec):
     if not spec.get("model"):
         return ""
@@ -226,7 +240,7 @@ def page(spec, body, words):
     </nav>
   </header>
   <section class="hero">
-    <img src="{spec["hero"]}" alt="{html.escape(spec["alt"])}">
+    {hero_media(spec)}
     <div class="hero-copy">
       <p class="kicker">{html.escape(spec["kicker"])}</p>
       <h1>{html.escape(spec["title"])}</h1>
