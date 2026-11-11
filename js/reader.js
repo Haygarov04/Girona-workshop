@@ -257,7 +257,7 @@ if (askRoot) {
     if (!thread.length) {
       const empty = document.createElement("p");
       empty.className = "note";
-      empty.textContent = `Ask ${CAST[current].name} about the orchard, the choices they made, or a sentence you want to hear in clear English.`;
+      empty.textContent = `Ask ${CAST[current].name} in English about the orchard, the choices they made, or a sentence you want to hear.`;
       log.append(empty);
       return;
     }
