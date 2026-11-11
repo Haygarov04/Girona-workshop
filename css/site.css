@@ -355,6 +355,7 @@ dialog.talk .log { max-height: 240px; overflow: auto; }
   border: 1px solid var(--line);
 }
 .card img { width: 100%; height: 220px; object-fit: cover; }
+.card.portrait img { height: auto; aspect-ratio: 2 / 3; object-fit: cover; object-position: center top; }
 .card div, .card figcaption { padding: 0.9rem 1rem 1rem; }
 table { width: 100%; border-collapse: collapse; background: white; border-radius: 1rem; overflow: hidden; }
 th, td { text-align: left; vertical-align: top; padding: 0.75rem; border-bottom: 1px solid var(--line); }
