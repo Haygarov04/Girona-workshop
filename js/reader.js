@@ -35,11 +35,31 @@ function spokenText(node) {
   return clone.textContent.replace(/\s+/g, " ").trim();
 }
 
+const stage = document.createElement("aside");
+stage.className = "stage";
+stage.innerHTML = "<img alt=\"\"><p></p>";
+document.body.append(stage);
+const stageImg = stage.querySelector("img");
+const stageName = stage.querySelector("p");
+
 function setSpeaker(id) {
   const person = CAST[id] || CAST.lina;
   portrait.src = `images/${id}.jpg`;
   portrait.alt = "";
   whoNow.textContent = person.name;
+  stageImg.src = `images/${id}.jpg`;
+  stageImg.alt = person.name;
+  stageName.textContent = person.name;
+}
+
+function focusLine(line) {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const top = line.getBoundingClientRect().top + window.scrollY - 110;
+  window.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
+}
+
+function setReading(on) {
+  document.body.classList.toggle("is-reading", on);
 }
 
 function setStatus(text) {
@@ -57,6 +77,7 @@ function halt() {
   audio.pause();
   releaseUrls();
   lines.forEach((line) => line.classList.remove("is-speaking"));
+  setReading(false);
   playBtn.textContent = "Play";
   bar.style.width = "0%";
 }
@@ -118,6 +139,7 @@ async function speakParagraphs(startAt) {
   const run = ++token;
   paused = false;
   releaseUrls();
+  setReading(true);
   playBtn.textContent = "Pause";
   let upcoming = null;
   for (let index = startAt; index < lines.length; index += 1) {
@@ -132,7 +154,7 @@ async function speakParagraphs(startAt) {
     setSpeaker(id);
     setStatus(`Paragraph ${index + 1} of ${lines.length}`);
     bar.style.width = `${((index + 1) / lines.length) * 100}%`;
-    line.scrollIntoView({ block: "center", behavior: "smooth" });
+    focusLine(line);
     try {
       const url = upcoming && upcoming.index === index ? await upcoming.promise : await fetchClip(text, CAST[id].voice);
       upcoming = null;
@@ -157,6 +179,7 @@ async function speakParagraphs(startAt) {
   }
   if (run !== token) return;
   lines.forEach((item) => item.classList.remove("is-speaking"));
+  setReading(false);
   setStatus("End of this part.");
   playBtn.textContent = "Play";
   activeIndex = -1;
@@ -166,6 +189,7 @@ async function speakOnce(text, id) {
   halt();
   const run = token;
   setSpeaker(id);
+  setReading(true);
   setStatus(`${CAST[id].name} is speaking`);
   playBtn.textContent = "Pause";
   try {
@@ -173,10 +197,12 @@ async function speakOnce(text, id) {
     if (run !== token) return;
     await playUrl(url, run);
     if (run !== token) return;
+    setReading(false);
     setStatus("Ready");
     playBtn.textContent = "Play";
   } catch (error) {
     if (run !== token) return;
+    setReading(false);
     setStatus(error.message);
     playBtn.textContent = "Play";
   }

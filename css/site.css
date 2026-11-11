@@ -27,7 +27,7 @@ body {
   color: var(--paper);
   font-family: var(--text);
   line-height: 1.65;
-  padding-bottom: 6.5rem;
+  padding-bottom: 9rem;
 }
 img { max-width: 100%; display: block; }
 a { color: inherit; }
@@ -117,7 +117,35 @@ h1 { font-size: clamp(2.6rem, 6vw, 5.4rem); margin: 0 0 0.8rem; }
   box-shadow: var(--shadow);
 }
 .story { padding: 2.2rem 2.2rem 2.6rem; }
-.story p { margin: 0 0 1.15rem; font-size: 1.08rem; }
+.story p { margin: 0 0 1.15rem; font-size: 1.08rem; scroll-margin-top: 7rem; scroll-margin-bottom: 46vh; }
+body.is-reading .story p[data-voice] { opacity: 0.38; }
+body.is-reading .story p.is-speaking,
+body.is-reading .story p.who:has(+ p.is-speaking) { opacity: 1; }
+.stage {
+  position: fixed;
+  z-index: 12;
+  left: max(1rem, calc(50vw - 680px));
+  top: calc(50vh - 1rem);
+  transform: translateY(-50%);
+  width: 260px;
+  pointer-events: none;
+}
+.stage img {
+  width: 100%;
+  height: 360px;
+  object-fit: cover;
+  object-position: center 18%;
+  border-radius: 1.3rem;
+  border: 1px solid rgba(227, 154, 69, 0.45);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.stage p {
+  margin: 0.75rem 0 0;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: 1.7rem;
+  color: var(--paper);
+}
 .story p.who:first-child { margin-top: 0; }
 .story p.who {
   margin: 1.5rem 0 0.3rem;
@@ -354,7 +382,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
   padding: 0.55rem 0.7rem;
   z-index: 15;
 }
-.player img { width: 46px; height: 62px; object-fit: cover; border-radius: 0.6rem; }
+.player img { width: 72px; height: 96px; object-fit: cover; object-position: center 18%; border-radius: 0.7rem; }
 .player p { margin: 0; }
 .player .who-now { font-family: var(--serif); font-size: 1rem; }
 .player .status { color: rgba(244, 236, 223, 0.72); font-size: 0.86rem; }
@@ -377,9 +405,13 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 
 .site-foot { width: min(1120px, calc(100% - 8vw)); margin: 1.4rem auto 0; color: rgba(244, 236, 223, 0.62); font-size: 0.9rem; }
 
+@media (max-width: 1360px) {
+  .stage { display: none; }
+}
 @media (max-width: 860px) {
   .grid-2 { grid-template-columns: 1fr; }
   .talk-people { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stage { display: none; }
   .top { align-items: flex-start; flex-direction: column; }
   .story { padding: 1.3rem 1.1rem 1.6rem; }
   .hero { min-height: 78vw; }
