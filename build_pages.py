@@ -32,6 +32,10 @@ PAGES = [
         "alt": "A foggy pear orchard at dusk, with wooden doors set into the trunks and warm light spilling from one open door.",
         "prev": None,
         "next": ("middle.html", "Next", "The Room of Tides"),
+        "model": "models/pear.glb",
+        "model_title": "The lantern pear",
+        "model_alt": "A three-dimensional glowing pear. Drag to turn it.",
+        "model_note": "Drag the pear to turn it. This is the fruit that lights the west row.",
     },
     {
         "file": "middle.html",
@@ -180,6 +184,18 @@ ASK = """
 """
 
 
+def model_panel(spec):
+    if not spec.get("model"):
+        return ""
+    return f"""      <div class="panel object-panel">
+        <p class="kicker">Turn it</p>
+        <h2>{html.escape(spec["model_title"])}</h2>
+        <model-viewer src="{spec["model"]}" alt="{html.escape(spec["model_alt"])}" camera-controls touch-action="pan-y" auto-rotate rotation-per-second="18deg" shadow-intensity="0.7" exposure="1.05" interaction-prompt="auto"></model-viewer>
+        <p class="note">{html.escape(spec["model_note"])}</p>
+      </div>
+"""
+
+
 def page(spec, body, words):
     asides = "\n          ".join(
         f'<button type="button" data-voice="{voice}" data-line="{html.escape(line)}"><small>{label}</small>{html.escape(line)}</button>'
@@ -199,6 +215,7 @@ def page(spec, body, words):
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,650&family=Literata:ital,opsz,wght@0,7..72,460;0,7..72,650;1,7..72,460&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css">
+  {('<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>' if spec.get("model") else "")}
 </head>
 <body data-narrator="{spec["narrator"]}">
   <a class="skip" href="#story">Skip to the story</a>
@@ -229,6 +246,7 @@ def page(spec, body, words):
           {cast(spec["narrator"])}
         </div>
       </div>
+      {model_panel(spec)}
       <div class="panel">
         <p class="kicker">A line aside</p>
         <div class="aside-list">
