@@ -37,8 +37,9 @@ function spokenText(node) {
 
 const stage = document.createElement("aside");
 stage.className = "stage";
-stage.innerHTML = "<img alt=\"\"><p></p>";
+stage.innerHTML = "<div class=\"stage-frame\"><img alt=\"\"><video muted loop playsinline></video></div><p></p>";
 const stageImg = stage.querySelector("img");
+const stageVideo = stage.querySelector("video");
 const stageName = stage.querySelector("p");
 const layout = document.querySelector(".layout");
 if (layout) layout.prepend(stage);
@@ -51,6 +52,11 @@ function setSpeaker(id) {
   stageImg.src = `images/${id}.jpg`;
   stageImg.alt = person.name;
   stageName.textContent = person.name;
+  const clip = `videos/${id}.mp4`;
+  if (stageVideo.getAttribute("src") !== clip) {
+    stageVideo.src = clip;
+    if (document.body.classList.contains("is-reading")) stageVideo.play().catch(() => {});
+  }
 }
 
 function focusLine(line) {
@@ -64,6 +70,11 @@ let followScroll = true;
 function setReading(on) {
   document.body.classList.toggle("is-reading", on);
   followScroll = !on;
+  if (on) stageVideo.play().catch(() => {});
+  else {
+    stageVideo.pause();
+    try { stageVideo.currentTime = 0; } catch (_) { /* not ready yet */ }
+  }
 }
 
 if (layout && lines.length) {

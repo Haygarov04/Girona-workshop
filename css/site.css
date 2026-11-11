@@ -122,7 +122,9 @@ body.is-reading .story p[data-voice] { opacity: 0.38; }
 body.is-reading .story p.is-speaking,
 body.is-reading .story p.who:has(+ p.is-speaking) { opacity: 1; }
 .stage { display: none; }
-.stage img {
+.stage-frame { position: relative; }
+.stage-frame img,
+.stage-frame video {
   width: 100%;
   height: 360px;
   object-fit: cover;
@@ -131,6 +133,12 @@ body.is-reading .story p.who:has(+ p.is-speaking) { opacity: 1; }
   border: 1px solid rgba(227, 154, 69, 0.45);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
+.stage-frame video {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+body.is-reading .stage-frame video { opacity: 1; }
 .stage p {
   margin: 0.75rem 0 0;
   text-align: center;
@@ -433,4 +441,5 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
   html { scroll-behavior: auto; }
   .story p.is-speaking { transition: none; }
   .hero video { display: none; }
+  body.is-reading .stage-frame video { opacity: 0; }
 }
