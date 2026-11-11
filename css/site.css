@@ -121,15 +121,7 @@ h1 { font-size: clamp(2.6rem, 6vw, 5.4rem); margin: 0 0 0.8rem; }
 body.is-reading .story p[data-voice] { opacity: 0.38; }
 body.is-reading .story p.is-speaking,
 body.is-reading .story p.who:has(+ p.is-speaking) { opacity: 1; }
-.stage {
-  position: fixed;
-  z-index: 12;
-  left: max(1rem, calc(50vw - 680px));
-  top: calc(50vh - 1rem);
-  transform: translateY(-50%);
-  width: 260px;
-  pointer-events: none;
-}
+.stage { display: none; }
 .stage img {
   width: 100%;
   height: 360px;
@@ -406,8 +398,26 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 
 .site-foot { width: min(1120px, calc(100% - 8vw)); margin: 1.4rem auto 0; color: rgba(244, 236, 223, 0.62); font-size: 0.9rem; }
 
-@media (max-width: 1360px) {
-  .stage { display: none; }
+@media (min-width: 1360px) {
+  .layout, .pager {
+    width: min(1080px, calc(100% - 6vw));
+  }
+  .layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+    align-items: start;
+  }
+  .stage {
+    display: block;
+    position: sticky;
+    top: 5.5rem;
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    align-self: start;
+    z-index: 2;
+  }
+  .story { grid-column: 2; grid-row: 1; }
+  .layout > .panel { grid-column: 1 / -1; }
 }
 @media (max-width: 860px) {
   .grid-2 { grid-template-columns: 1fr; }

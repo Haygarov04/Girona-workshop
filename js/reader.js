@@ -38,9 +38,10 @@ function spokenText(node) {
 const stage = document.createElement("aside");
 stage.className = "stage";
 stage.innerHTML = "<img alt=\"\"><p></p>";
-document.body.append(stage);
 const stageImg = stage.querySelector("img");
 const stageName = stage.querySelector("p");
+const layout = document.querySelector(".layout");
+if (layout) layout.prepend(stage);
 
 function setSpeaker(id) {
   const person = CAST[id] || CAST.lina;
@@ -58,8 +59,23 @@ function focusLine(line) {
   window.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
 }
 
+let followScroll = true;
+
 function setReading(on) {
   document.body.classList.toggle("is-reading", on);
+  followScroll = !on;
+}
+
+if (layout && lines.length) {
+  const narratorWatch = new IntersectionObserver((entries) => {
+    if (!followScroll) return;
+    const visible = entries.filter((entry) => entry.isIntersecting);
+    if (!visible.length) return;
+    visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+    const id = visible[0].target.dataset.voice;
+    if (id) setSpeaker(id);
+  }, { rootMargin: "-120px 0px -45% 0px", threshold: [0.2, 0.5, 0.8] });
+  lines.forEach((line) => narratorWatch.observe(line));
 }
 
 function setStatus(text) {
