@@ -64,7 +64,7 @@ PAGES = [
         "video": "videos/gallery.mp4",
         "alt": "A long glass corridor lined with closed wooden doors, pear branches against the panes, and one open door shining gold.",
         "prev": ("middle.html", "Previous", "The Room of Tides"),
-        "next": ("#ask", "After the story", "Ask them a question"),
+        "next": ("#talk", "After the story", "Talk with them"),
         "ask": True,
     },
 ]
@@ -215,7 +215,6 @@ def page(spec, body, words):
         f'<button type="button" data-voice="{voice}" data-line="{html.escape(line)}"><small>{label}</small>{html.escape(line)}</button>'
         for voice, label, line in ASIDES[spec["file"]]
     )
-    ask = ASK if spec.get("ask") else ""
     description = html.escape(spec["dek"])
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -251,29 +250,12 @@ def page(spec, body, words):
     <article class="story" id="story">
 {body}
     </article>
-    <aside class="cast">
-      <div class="panel">
-        <p class="kicker">Who is here</p>
-        <h2>They tell it themselves.</h2>
-        <p class="note">Press a portrait to hear that person. Press Play to hear the whole part, each voice in turn.</p>
-        <div class="people">
-          {cast(spec["narrator"])}
-        </div>
-      </div>
-      {model_panel(spec)}
-      <div class="panel">
-        <p class="kicker">A line aside</p>
-        <div class="aside-list">
-          {asides}
-        </div>
-      </div>
-    </aside>
+    {model_panel(spec)}
   </main>
   <nav class="pager" aria-label="Parts">
     {pager_link(spec["prev"], "prev")}
     {pager_link(spec["next"], "next")}
   </nav>
-  {ask}
   <footer class="site-foot">
     <p>An English story in three parts. {words} words across the beginning, the middle, and the end. The voices use Grok when the server has an API key.</p>
   </footer>

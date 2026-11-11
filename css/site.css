@@ -102,10 +102,10 @@ h1 { font-size: clamp(2.6rem, 6vw, 5.4rem); margin: 0 0 0.8rem; }
 .dek { font-size: 1.2rem; max-width: 38rem; color: rgba(244, 236, 223, 0.88); margin: 0; }
 
 .layout {
-  width: min(1120px, calc(100% - 8vw));
+  width: min(760px, calc(100% - 8vw));
   margin: -2rem auto 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
   position: relative;
   z-index: 1;
@@ -199,8 +199,62 @@ model-viewer {
 .aside-list button:hover { background: var(--leaf); }
 .aside-list small { display: block; color: var(--amber); letter-spacing: 0.08em; text-transform: uppercase; font-family: var(--sans); font-size: 0.68rem; }
 
+.talk-open {
+  border: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  background: var(--amber);
+  color: var(--night);
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.85rem;
+}
+dialog.talk {
+  width: min(680px, calc(100vw - 1.4rem));
+  max-height: min(760px, calc(100vh - 2rem));
+  margin: auto;
+  padding: 1rem 1rem 1.1rem;
+  border: 0;
+  border-radius: 1.4rem;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+dialog.talk::backdrop { background: rgba(18, 16, 14, 0.62); }
+.talk-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin: 0; }
+.talk-head h2 { margin: 0.15rem 0 0; font-size: 2rem; }
+.talk-head button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+.talk-people { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.55rem; margin: 0.8rem 0; }
+.talk-people button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+  text-align: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.9rem;
+  padding: 0.35rem;
+  cursor: pointer;
+  color: inherit;
+}
+.talk-people img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 0.75rem; }
+.talk-people strong { font-family: var(--serif); font-size: 0.95rem; }
+.talk-people button[aria-pressed="true"] { background: rgba(227, 154, 69, 0.16); border-color: rgba(154, 93, 34, 0.35); }
+dialog.talk .log { max-height: 240px; overflow: auto; }
 .pager {
-  width: min(1120px, calc(100% - 8vw));
+  width: min(760px, calc(100% - 8vw));
   margin: 1.2rem auto 0;
   display: flex;
   justify-content: space-between;
@@ -324,7 +378,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 .site-foot { width: min(1120px, calc(100% - 8vw)); margin: 1.4rem auto 0; color: rgba(244, 236, 223, 0.62); font-size: 0.9rem; }
 
 @media (max-width: 860px) {
-  .layout, .grid-2 { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .talk-people { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .top { align-items: flex-start; flex-direction: column; }
   .story { padding: 1.3rem 1.1rem 1.6rem; }
   .hero { min-height: 78vw; }

@@ -242,14 +242,58 @@ document.querySelectorAll("[data-line]").forEach((button) => {
 setSpeaker(document.body.dataset.narrator || "lina");
 setStatus(lines.length ? "Press Play to hear this part in English." : "Ready");
 
-const askRoot = document.querySelector("#ask");
-if (askRoot) {
+const LINES = {
+  lina: "I measure orchards that behave like orchards. This one did not. I came home for my brother, not for a story.",
+  bram: "I know the sound a false room makes. These boards were real. So was the gate I locked.",
+  sera: "Say what a thing is, and it may consent to stay. Tonight the orchard taught me when to stop naming and start planting.",
+  edwin: "I held the door because I did not like the terms. If I let go, the trees would keep the promise and forget who made it.",
+};
+
+function mountTalk() {
+  const bar = document.querySelector(".top");
+  const dialog = document.createElement("dialog");
+  dialog.id = "talk";
+  dialog.className = "talk";
+  dialog.innerHTML = `
+    <div class="talk-head">
+      <div>
+        <p class="kicker">Who is here</p>
+        <h2>Talk with them</h2>
+      </div>
+      <button type="button" data-close>Close</button>
+    </div>
+    <p class="note">Choose a person. They answer in English, then say it aloud.</p>
+    <div class="talk-people"></div>
+    <div class="log" aria-live="polite"></div>
+    <form class="ask-form">
+      <label class="note" for="question">Your question</label>
+      <input id="question" name="question" maxlength="600" placeholder="Ask in English" autocomplete="off">
+      <button class="solid" type="submit">Ask</button>
+    </form>
+  `;
+  const people = dialog.querySelector(".talk-people");
+  Object.entries(CAST).forEach(([id, person]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.character = id;
+    button.innerHTML = `<img src="images/${id}.jpg" alt=""><strong>${person.name}</strong>`;
+    people.append(button);
+  });
+  document.body.append(dialog);
+
+  const open = document.createElement("button");
+  open.type = "button";
+  open.className = "talk-open";
+  open.textContent = "Talk";
+  open.setAttribute("aria-haspopup", "dialog");
+  if (bar) bar.append(open);
+
   const threads = { lina: [], bram: [], sera: [], edwin: [] };
-  let current = "lina";
-  const log = askRoot.querySelector(".log");
-  const form = askRoot.querySelector("form");
+  let current = document.body.dataset.narrator || "lina";
+  const log = dialog.querySelector(".log");
+  const form = dialog.querySelector("form");
   const input = form.querySelector("input");
-  const choices = [...askRoot.querySelectorAll(".choice")];
+  const choices = [...dialog.querySelectorAll("[data-character]")];
 
   function render() {
     log.replaceChildren();
@@ -257,7 +301,7 @@ if (askRoot) {
     if (!thread.length) {
       const empty = document.createElement("p");
       empty.className = "note";
-      empty.textContent = `Ask ${CAST[current].name} in English about the orchard, the choices they made, or a sentence you want to hear.`;
+      empty.textContent = `Ask ${CAST[current].name} about the orchard, a choice they made, or a sentence you want to hear.`;
       log.append(empty);
       return;
     }
@@ -269,27 +313,35 @@ if (askRoot) {
       bubble.append(label, document.createTextNode(entry.content));
       log.append(bubble);
     });
-    log.lastElementChild.scrollIntoView({ block: "nearest" });
   }
 
-  function select(id) {
+  function select(id, speak) {
     current = id;
     choices.forEach((choice) => choice.setAttribute("aria-pressed", choice.dataset.character === id ? "true" : "false"));
     setSpeaker(id);
     render();
+    if (speak) speakOnce(LINES[id], id);
   }
 
-  choices.forEach((choice) => {
-    choice.addEventListener("click", () => select(choice.dataset.character));
-  });
+  function show() {
+    if (!dialog.open) dialog.showModal();
+    input.focus();
+  }
 
-  askRoot.querySelectorAll(".chip").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      input.value = chip.dataset.q;
-      input.focus();
+  open.addEventListener("click", show);
+  dialog.querySelector("[data-close]").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+  document.querySelectorAll('a[href="#talk"]').forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      show();
     });
   });
-
+  choices.forEach((choice) => {
+    choice.addEventListener("click", () => select(choice.dataset.character, true));
+  });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const question = input.value.trim();
@@ -320,5 +372,7 @@ if (askRoot) {
     }
   });
 
-  select("lina");
+  select(current, false);
 }
+
+mountTalk();
